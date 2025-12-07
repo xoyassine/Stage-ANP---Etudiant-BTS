@@ -178,10 +178,7 @@ function display_etat_badge($etat) {
                     <a class="nav-link" href="admin_gestion_comptes.php">GESTION COMPTES</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link active" aria-current="page" href="#">GESTION DEMANDES</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="admin_gestion_autorisations.php">GESTION AUTHORISATIONS</a>
+                    <a class="nav-link active" aria-current="page" href="#">GESTION DEMANDES ET AUTORISATIONS</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-danger" href="logout.php">DECONNEXION</a>

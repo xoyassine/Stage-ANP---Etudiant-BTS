@@ -339,7 +339,13 @@ function display_etat_badge($etat) {
                         <td><?= htmlspecialchars($d['type']) ?></td>
                         <td><?= htmlspecialchars($d['port']) ?></td>
                         <td><?= htmlspecialchars($d['superficie']) ?></td>
-                        <td><?= htmlspecialchars($d['duree']) ?></td>
+                        <td>
+                            <?php if ($d['type'] === 'nouvelle'): ?>
+                                <?= htmlspecialchars($d['duree']) ?> 
+                            <?php elseif ($d['type'] === 'renouvellement'): ?>
+                                + <?= htmlspecialchars($d['duree']) ?> 
+                            <?php endif; ?>
+                        </td>
                         <td><?= htmlspecialchars($d['activite']) ?></td>
                         <td><?= display_etat_badge($d['etat']) ?></td>
                         <td>
@@ -351,17 +357,21 @@ function display_etat_badge($etat) {
                             <?php endif; ?>
                         </td>
                         <td>
-                            <?php if ($d['etat'] === 'en_attente'): ?>
+                            <?php if ($d['etat'] === 'en_attente' && $d['type'] === 'nouvelle'): ?>
                                 <a href="admin_gestion_demandes.php?creer_autorisation_id=<?= urlencode($d['id']) ?>" class="btn btn-success btn-sm mb-1">Créer Autorisation</a>
-                                
+                                <a href="admin_gestion_demandes.php?rejeter_demande_id=<?= urlencode($d['id']) ?>" class="btn btn-danger btn-sm mb-1">Rejeter</a>
+                            <?php elseif ($d['etat'] === 'en_attente' && $d['type'] === 'renouvellement'): ?>
+                                <a href="admin_gestion_demandes.php?creer_autorisation_id=<?= urlencode($d['id']) ?>" class="btn btn-success btn-sm mb-1">Renouveler Autorisation</a>
                                 <a href="admin_gestion_demandes.php?rejeter_demande_id=<?= urlencode($d['id']) ?>" class="btn btn-danger btn-sm mb-1">Rejeter</a>
                             <?php elseif ($d['etat'] === 'acceptee'): ?>
                                 <span class="text-success">Autorisée</span>
+                                <a href="<?= htmlspecialchars($d['fichierPDF']) ?>" target="_blank" class="btn btn-sm btn-outline-success mt-1">Voir Autorisation</a>
                             <?php elseif ($d['etat'] === 'refusee'): ?>
                                 <span class="text-danger">Rejetée</span>
                                 <?php if (!empty($d['motifRejet'])): ?>
                                     <button type="button" class="btn btn-sm btn-outline-danger mt-1" data-bs-toggle="collapse" data-bs-target="#motif-<?= $d['id'] ?>">
                                         Voir Motif
+
                                     </button>
                                     <div class="collapse mt-1" id="motif-<?= $d['id'] ?>">
                                         <small class="text-danger d-block"><?= nl2br(htmlspecialchars($d['motifRejet'])) ?></small>

@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (move_uploaded_file($_FILES['demandePDF']['tmp_name'], $filePath)) {
             
             try {
-                // 2. Préparation et Insertion dans la table 'demande'
+                // réparation et Insertion dans la table 'demande'
                 $stmt = $pdo->prepare("INSERT INTO demande 
                     (idUtilisateur, dateDepot, superficie, duree, activite, port, demandePDF, etat, motifRejet) 
                     VALUES (?, NOW(), ?, ?, ?, ?, ?, 'en_attente', NULL)");
@@ -53,7 +53,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $port,
                     $filePath
                 ]);
+
+                // Récupérer l'ID de la demande nouvellement insérée
+                $newDemandeId = $pdo->lastInsertId();
                 
+                // Mettre à jour la ligne pour définir base_demande = id
+                $stmtUpdate = $pdo->prepare("UPDATE demande SET base_demande = ? WHERE id = ?");
+                $stmtUpdate->execute([$newDemandeId, $newDemandeId]);
+
+
                 $successMessage = "Votre demande a été déposée avec succès (N° " . $pdo->lastInsertId() . ") et est en attente de traitement.";
 
             } catch (PDOException $e) {

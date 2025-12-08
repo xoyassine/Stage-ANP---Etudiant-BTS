@@ -41,6 +41,14 @@ if ($isvalidfilter === '0' || $isvalidfilter === '1' || $isvalidfilter === '-1')
     $params[] = $isvalidfilter;
 }
 
+// Recherche par ID (CIN/ICE)
+
+$idsearch = $_GET['idsearch'] ?? '';
+if (!empty($idsearch)) {
+    $sql .= " AND id LIKE ?";
+    $params[] = '%' . $idsearch . '%';
+}
+
 $sql .= " ORDER BY nom DESC";
 
 $stmt = $pdo->prepare($sql);
@@ -84,6 +92,8 @@ $users = $stmt->fetchAll();
 
     <div class="mb-3">
         <form method="get" class="form-inline">
+            <label for="IdSearch" class="me-2">Rechercher par Id : </label>
+            <input type="text" name="idsearch" id="IdSearch" class="form-control w-auto d-inline-block me-2" value="<?= htmlspecialchars($_GET['idsearch'] ?? '') ?>">
             <label for="roleFilter" class="me-2">Filtrer par rôle :</label>
             <select name="role" id="roleFilter" class="form-select w-auto d-inline-block me-2">
                 <option value="">Tous</option>

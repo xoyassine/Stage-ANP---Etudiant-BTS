@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         try {
             // 1. Récupérer les détails de l'ancienne autorisation pour la nouvelle demande
             $stmtOldAuth = $pdo->prepare("
-                SELECT d.superficie, d.activite, d.port, a.idDemande
+                SELECT d.superficie, d.activite, d.port, a.idDemande, d.demandePDF
                 FROM autorisation a 
                 JOIN demande d ON a.idDemande = d.id 
                 WHERE a.id = ?");
@@ -137,7 +137,7 @@ function get_expiration_status($dateFin) {
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link" href="demandeDashboard.php">DEMANDES</a>
+                        <a class="nav-link" href="demandesDashboard.php">DEMANDES</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="nouvelle_demande.php">NOUVELLE DEMANDE</a>

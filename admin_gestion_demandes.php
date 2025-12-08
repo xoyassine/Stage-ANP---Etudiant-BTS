@@ -21,7 +21,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $demande_id = trim($_POST['demande_id'] ?? '');
     $dateAutorisation = trim($_POST['dateAutorisation'] ?? date('Y-m-d'));
     $dateFin = trim($_POST['dateFin'] ?? '');
-    
+    $base_demande = trim($_POST['base_demande'] ?? '');
+    $type_demande = trim($_POST['type_demande'] ?? '');
+
     if (empty($demande_id) || empty($dateFin) || !isset($_FILES['fichierPDF']) || $_FILES['fichierPDF']['error'] !== UPLOAD_ERR_OK) {
         $errorMessage = "Erreur : Tous les champs de l'autorisation sont requis (ID: {$demande_id}).";
     } else {
@@ -42,6 +44,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 // 2. Mise à jour de l'état dans la table 'demande' à 'acceptee'
                 $stmtD = $pdo->prepare("UPDATE demande SET etat = 'acceptee', motifRejet = NULL WHERE id = ?");
                 $stmtD->execute([$demande_id]);
+
+                // 3. Si c'est un renouvellement, mettre à jour le statut autorisation précédente
+                if ($type_demande === 'renouvellement') {
+                    $stmtOld = $pdo->prepare("
+                        UPDATE autorisation
+                        SET statut = 'renouvelee'
+                        WHERE id = (SELECT id FROM autorisation WHERE idDemande = ? ORDER BY id DESC LIMIT 1)
+                    ");
+                }
+                $stmtOld->execute([$base_demande]);
+
                 
                 $pdo->commit();
                 
@@ -209,6 +222,8 @@ function display_etat_badge($etat) {
                 <form method="post" enctype="multipart/form-data" action="admin_gestion_demandes.php">
                     <input type="hidden" name="action" value="creer_autorisation">
                     <input type="hidden" name="demande_id" value="<?= htmlspecialchars($demande_details_to_create['id']) ?>">
+                    <input type="hidden" name="base_demande" value="<?= htmlspecialchars($demande_details_to_create['base_demande']) ?>">
+                    <input type="hidden" name="type_demande" value="<?= htmlspecialchars($demande_details_to_create['type']) ?>">
 
                     <div class="row">
                         <div class="col-md-6 mb-3">

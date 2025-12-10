@@ -69,9 +69,6 @@ try {
                         <a class="nav-link" href="autorisationsDashboard.php">AUTORISATIONS</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="renouveler_autorisations.php">RENOUVELLER AUTORISATIONS</a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link active" aria-current="page" href="profile.php">PROFILE</a>
                     </li>
                     <li class="nav-item">
@@ -122,7 +119,6 @@ try {
                         </ul>
                     
                     <?php elseif ($user_role === 'client_morale' && $clientData): ?>
-                        <h5>Détails Personne Morale</h5>
                         <p><strong>Raison Sociale:</strong> <?= htmlspecialchars($clientData['raisonSocial']) ?></p>
                         <p><strong>Secteur d'Activité:</strong> <?= htmlspecialchars($clientData['secteurActivite']) ?></p>
                         <p><strong>Document Registre de Commerce:</strong> <a href="<?= htmlspecialchars($clientData['docRegistreCommerce']) ?>" target="_blank">Voir le document</a></p>

@@ -63,13 +63,10 @@ function display_etat($etat) {
                         <a class="nav-link active" aria-current="page" href="#">DEMANDES</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="nouvelle_demande.php">NOUVELLE DEMANDE</a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link" href="autorisationsDashboard.php">AUTORISATIONS</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="renouveler_autorisations.php">RENOUVELLER AUTORISATIONS</a>
+                        <a class="nav-link" href="nouvelle_demande.php">NOUVELLE DEMANDE</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="profile.php">PROFILE</a>

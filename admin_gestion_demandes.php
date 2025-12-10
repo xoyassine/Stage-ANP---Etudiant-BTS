@@ -14,15 +14,12 @@ $demande_details_to_create = null;
 $demande_details_to_reject = null; 
 
 // --- LOGIQUE DE TRAITEMENT (CRÉATION AUTORISATION / REJET) ---
-
-// Logique pour CRÉER L'AUTORISATION (Soumission du formulaire de création)
+// ... (Logique de POST CREER AUTORISATION)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'creer_autorisation') {
     
     $demande_id = trim($_POST['demande_id'] ?? '');
     $dateAutorisation = trim($_POST['dateAutorisation'] ?? date('Y-m-d'));
     $dateFin = trim($_POST['dateFin'] ?? '');
-    $base_demande = trim($_POST['base_demande'] ?? '');
-    $type_demande = trim($_POST['type_demande'] ?? '');
 
     if (empty($demande_id) || empty($dateFin) || !isset($_FILES['fichierPDF']) || $_FILES['fichierPDF']['error'] !== UPLOAD_ERR_OK) {
         $errorMessage = "Erreur : Tous les champs de l'autorisation sont requis (ID: {$demande_id}).";
@@ -45,17 +42,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $stmtD = $pdo->prepare("UPDATE demande SET etat = 'acceptee', motifRejet = NULL WHERE id = ?");
                 $stmtD->execute([$demande_id]);
 
-                // 3. Si c'est un renouvellement, mettre à jour le statut autorisation précédente
-                if ($type_demande === 'renouvellement') {
-                    $stmtOld = $pdo->prepare("
-                        UPDATE autorisation
-                        SET statut = 'renouvelee'
-                        WHERE id = (SELECT id FROM autorisation WHERE idDemande = ? ORDER BY id DESC LIMIT 1)
-                    ");
-                }
-                $stmtOld->execute([$base_demande]);
-
-                
                 $pdo->commit();
                 
                 $successMessage = "Autorisation créée et Demande N°{$demande_id} ACCEPTÉE avec succès.";
@@ -72,9 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
     }
 }
-
-
-// Logique de soumission du motif de rejet
+// ... (Logique de POST REJETER DEMANDE - inchangée)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'rejeter_demande') {
     $demande_id = trim($_POST['demande_id'] ?? '');
     $motifRejet = trim($_POST['motifRejet'] ?? '');
@@ -83,7 +67,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $errorMessage = "Erreur : Le motif de rejet est obligatoire.";
     } else {
         try {
-            // Mettre à jour l'état et enregistrer le motif
             $stmt = $pdo->prepare("UPDATE demande SET etat = 'refusee', motifRejet = ? WHERE id = ?");
             $stmt->execute([$motifRejet, $demande_id]);
             
@@ -103,9 +86,8 @@ if (isset($_GET['success'])) {
 }
 
 
-// --- GESTION DE L'AFFICHAGE DES FORMULAIRES ---
-
-// Affichage du formulaire de CRÉATION D'AUTORISATION
+// --- GESTION DE L'AFFICHAGE DES FORMULAIRES (CRÉATION/REJET) ---
+// ... (Logique pour $demande_details_to_create et $demande_details_to_reject - inchangée)
 $demande_id_to_create = $_GET['creer_autorisation_id'] ?? null;
 if ($demande_id_to_create) {
     try {
@@ -117,7 +99,6 @@ if ($demande_id_to_create) {
     } catch (PDOException $e) { $errorMessage = "Erreur BDD lors de la récupération des détails de la demande: " . $e->getMessage(); }
 }
 
-// Affichage du formulaire de REJET
 $demande_id_to_reject = $_GET['rejeter_demande_id'] ?? null;
 if ($demande_id_to_reject) {
     try {
@@ -133,10 +114,20 @@ if ($demande_id_to_reject) {
 
 $filterPort = $_GET['port'] ?? '';
 $filterEtat = $_GET['etat'] ?? '';
+$filterStatutAutorisation = $_GET['statut_autorisation'] ?? '';
 
-$sql = "SELECT d.*, u.nom, u.prenom , a.fichierPDF 
-        FROM demande d  
-        LEFT JOIN autorisation a ON d.base_demande = a.idDemande
+// Requête mise à jour pour inclure les données d'autorisation (fichierPDF et dateFin)
+$sql = "SELECT d.*, u.nom, u.prenom, a.fichierPDF, a.dateFin, a.id AS idAutorisation 
+        /* Vérifie si cette demande a été renouvelée par une demande acceptée ultérieure */
+        , COALESCE(
+            (SELECT 'oui' FROM demande d2 
+             WHERE d2.base_demande = d.base_demande 
+               AND d2.etat = 'acceptee' 
+               AND d2.id > d.id
+             LIMIT 1), 'non') AS est_renouvelee  
+        
+        FROM demande d
+        LEFT JOIN autorisation a ON d.id = a.idDemande
         JOIN utilisateur u ON d.idUtilisateur = u.id
         WHERE 1=1";
         
@@ -154,12 +145,30 @@ if (!empty($filterPort)) {
     $params[] = $filterPort;
 }
 
+// Filtre par Statut de l'Autorisation
+if (!empty($filterStatutAutorisation)) {
+    if ($filterStatutAutorisation === 'en_cours') {
+        $sql .= " AND d.etat = 'acceptee' AND a.dateFin >= CURDATE()";
+    } elseif ($filterStatutAutorisation === 'echouee') {
+        $sql .= " AND d.etat = 'acceptee' AND a.dateFin < CURDATE()";
+    } elseif ($filterStatutAutorisation === 'renouvelee') {
+        $sql .= " AND d.etat = 'acceptee' AND 
+                  EXISTS (
+                      SELECT 1 FROM demande d2 
+                      WHERE d2.base_demande = d.base_demande 
+                        AND d2.etat = 'acceptee' 
+                        AND d2.id > d.id
+                  )";
+    }
+}
+
 $sql .= " ORDER BY d.dateDepot DESC";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $demandes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+// Fonction d'affichage des statuts de demande (non liés à la date)
 function display_etat_badge($etat) {
     switch ($etat) {
         case 'acceptee': return '<span class="badge bg-success">Acceptée</span>';
@@ -168,6 +177,35 @@ function display_etat_badge($etat) {
         default: return '<span class="badge bg-warning text-dark">En Attente</span>';
     }
 }
+
+// NOUVELLE FONCTION: Statut de l'AUTORISATION (si la demande est acceptée)
+function get_autorisation_status($dateFin, $estRenouvelee) {
+    if (!$dateFin) {
+        return '<span class="badge bg-secondary">N/A</span>';
+    }
+    
+    try {
+        $dateFinObj = new DateTime($dateFin);
+        $aujourdhui = new DateTime();
+        $interval = $aujourdhui->diff($dateFinObj);
+    } catch (Exception $e) {
+        return '<span class="badge bg-secondary">Date Invalide</span>';
+    }
+
+    // 1. Vérification du statut 'Renouvelée'
+    if ($estRenouvelee === 'oui') {
+        return '<span class="badge bg-info text-white">Renouvelée</span>';
+    }
+
+    // 2. Vérification du statut 'Échouée' (Expirée)
+    if ($dateFinObj < $aujourdhui) {
+        return '<span class="badge bg-danger">Échouée</span>';
+    }
+    
+    // 3. Vérification du statut 'En Cours' (Valide) et alerte
+    return '<span class="badge bg-success">En Cours</span>';
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -222,9 +260,6 @@ function display_etat_badge($etat) {
                 <form method="post" enctype="multipart/form-data" action="admin_gestion_demandes.php">
                     <input type="hidden" name="action" value="creer_autorisation">
                     <input type="hidden" name="demande_id" value="<?= htmlspecialchars($demande_details_to_create['id']) ?>">
-                    <input type="hidden" name="base_demande" value="<?= htmlspecialchars($demande_details_to_create['base_demande']) ?>">
-                    <input type="hidden" name="type_demande" value="<?= htmlspecialchars($demande_details_to_create['type']) ?>">
-
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="dateAutorisation" class="form-label">Date d'Autorisation</label>
@@ -240,12 +275,10 @@ function display_etat_badge($etat) {
                             <small class="text-muted">Durée suggérée: <?= htmlspecialchars($duree_annees) ?> ans.</small>
                         </div>
                     </div>
-
                     <div class="mb-3">
                         <label for="fichierPDF" class="form-label">Document PDF de l'Autorisation</label>
                         <input class="form-control" type="file" id="fichierPDF" name="fichierPDF" accept="application/pdf" required>
                     </div>
-
                     <button type="submit" class="btn btn-success">VALIDER ET ENREGISTRER L'AUTORISATION</button>
                     <a href="admin_gestion_demandes.php" class="btn btn-secondary">Annuler</a>
                 </form>
@@ -315,9 +348,21 @@ function display_etat_badge($etat) {
                 <option value="Kénitra" <?= $filterPort === 'Kénitra' ? 'selected' : '' ?>>Port de Kénitra</option>
                 <option value="Autre" <?= $filterPort === 'Autre' ? 'selected' : '' ?>>Autre Port</option>
             </select>
-            
+
+            <label for="statutAutorisationFilter" class="me-2">Filtrer par Statut Autorisation :</label>
+            <select name="statut_autorisation" id="statutAutorisationFilter" class="form-select w-auto d-inline-block me-2">
+                <option value="">Tous les statuts</option>
+                <option value="en_cours" <?= $filterStatutAutorisation === 'en_cours' ? 'selected' : '' ?>>En Cours</option>
+                <option value="echouee" <?= $filterStatutAutorisation === 'echouee' ? 'selected' : '' ?>>Échouée</option>
+                <option value="renouvelee" <?= $filterStatutAutorisation === 'renouvelee' ? 'selected' : '' ?>>Renouvelée</option>
+            </select>
+
+            <br>
+            <br>
+
             <button type="submit" class="btn btn-primary btn-sm">Filtrer</button>
-            <a href="admin_gestion_demandes.php" class="btn btn-outline-secondary btn-sm">Réinitialiser</a>
+            <a href="admin_gestion_demandes.php" class="btn btn-outline-secondary btn-sm ">Réinitialiser</a>
+            <a href="export_statistiques.php" class="btn btn-outline-secondary btn-sm ">Telecharger Statistique demandes</a>
         </form>
     </div>
 
@@ -330,15 +375,14 @@ function display_etat_badge($etat) {
                     <th>N°</th>
                     <th>Date Dépôt</th>
                     <th>Demandeur</th>
-                    <th>ID Demandeur</th>
                     <th>Type Demande</th>
                     <th>Port</th>
                     <th>Superficie (m²)</th>
                     <th>Durée (ans)</th>
                     <th>Activité</th>
-                    <th>État</th>
-                    <th>Document</th>
+                    <th>Statut Aut.</th> <th>Document</th>
                     <th>Actions</th>
+                    <th>État</th>
                 </tr>
             </thead>
             <tbody>
@@ -347,43 +391,51 @@ function display_etat_badge($etat) {
                         <td><?= htmlspecialchars($d['id']) ?></td>
                         <td><?= htmlspecialchars($d['dateDepot']) ?></td>
                         <td><?= htmlspecialchars($d['nom']) . ' ' . htmlspecialchars($d['prenom']) ?></td>
-                        <td><?= htmlspecialchars($d['idUtilisateur']) ?></td>
                         <td><?= htmlspecialchars($d['type']) ?></td>
                         <td><?= htmlspecialchars($d['port']) ?></td>
                         <td><?= htmlspecialchars($d['superficie']) ?></td>
                         <td>
                             <?php if ($d['type'] === 'nouvelle'): ?>
-                                <?= htmlspecialchars($d['duree']) ?> 
+                                <?= htmlspecialchars($d['duree']) ?> ans
                             <?php elseif ($d['type'] === 'renouvellement'): ?>
-                                + <?= htmlspecialchars($d['duree']) ?> 
+                                + <?= htmlspecialchars($d['duree']) ?> ans
                             <?php endif; ?>
                         </td>
                         <td><?= htmlspecialchars($d['activite']) ?></td>
-                        <td><?= display_etat_badge($d['etat']) ?></td>
+                        
                         <td>
-                            <?php if ($d['type'] === 'nouvelle' && $d['demandePDF']): ?>
-                                <a href="<?= htmlspecialchars($d['demandePDF']) ?>" target="_blank" class="btn btn-sm btn-info">Voir PDF</a>
-                            <?php elseif ($d['type'] === 'renouvellement' && $d['demandePDF'] ):?>
-                                <a href="<?= htmlspecialchars($d['demandePDF']) ?>" target="_blank" class="btn btn-sm btn-info">Voir PDF du 1ere demande</a>
-                                <a href="<?= htmlspecialchars($d['fichierPDF']) ?>" target="_blank" class="btn btn-sm btn-info mt-1">Voir PDF Autorisation</a>
+                            <?php if ($d['etat'] === 'acceptee'): ?>
+                                <?= get_autorisation_status($d['dateFin'], $d['est_renouvelee']) ?>
+                            <?php else: ?>
+                                <span class="badge bg-secondary">N/A</span>
                             <?php endif; ?>
                         </td>
+
                         <td>
-                            <?php if ($d['etat'] === 'en_attente' && $d['type'] === 'nouvelle'): ?>
-                                <a href="admin_gestion_demandes.php?creer_autorisation_id=<?= urlencode($d['id']) ?>" class="btn btn-success btn-sm mb-1">Créer Autorisation</a>
-                                <a href="admin_gestion_demandes.php?rejeter_demande_id=<?= urlencode($d['id']) ?>" class="btn btn-danger btn-sm mb-1">Rejeter</a>
-                            <?php elseif ($d['etat'] === 'en_attente' && $d['type'] === 'renouvellement'): ?>
-                                <a href="admin_gestion_demandes.php?creer_autorisation_id=<?= urlencode($d['id']) ?>" class="btn btn-success btn-sm mb-1">Renouveler Autorisation</a>
+                            <?php if ($d['demandePDF']): ?>
+                                <a href="<?= htmlspecialchars($d['demandePDF']) ?>" target="_blank" class="btn btn-sm btn-info">Voir Demande</a>
+                            <?php endif; ?>
+                            <?php if ($d['fichierPDF']): ?>
+                                <a href="<?= htmlspecialchars($d['fichierPDF']) ?>" target="_blank" class="btn btn-sm btn-success mt-1">Voir Autorisation</a>
+                            <?php endif; ?>
+                        </td>
+
+                        <td>
+                            <?php if ($d['etat'] === 'en_attente'): ?>
+                                <a href="admin_gestion_demandes.php?creer_autorisation_id=<?= urlencode($d['id']) ?>" class="btn btn-success btn-sm mb-1">
+                                    <?= $d['type'] === 'renouvellement' ? 'Renouveler' : 'Créer Autorisation' ?>
+                                </a>
                                 <a href="admin_gestion_demandes.php?rejeter_demande_id=<?= urlencode($d['id']) ?>" class="btn btn-danger btn-sm mb-1">Rejeter</a>
                             <?php elseif ($d['etat'] === 'acceptee'): ?>
-                                <span class="text-success">Autorisée</span>
-                                <a href="<?= htmlspecialchars($d['fichierPDF']) ?>" target="_blank" class="btn btn-sm btn-outline-success mt-1">Voir Autorisation</a>
+                                <span class="text-success">Traitée</span>
+                                <?php if ($d['est_renouvelee'] === 'oui'): ?>
+                                    <span class="d-block text-info small">Renouvelée</span>
+                                <?php endif; ?>
                             <?php elseif ($d['etat'] === 'refusee'): ?>
                                 <span class="text-danger">Rejetée</span>
                                 <?php if (!empty($d['motifRejet'])): ?>
                                     <button type="button" class="btn btn-sm btn-outline-danger mt-1" data-bs-toggle="collapse" data-bs-target="#motif-<?= $d['id'] ?>">
                                         Voir Motif
-
                                     </button>
                                     <div class="collapse mt-1" id="motif-<?= $d['id'] ?>">
                                         <small class="text-danger d-block"><?= nl2br(htmlspecialchars($d['motifRejet'])) ?></small>
@@ -391,6 +443,8 @@ function display_etat_badge($etat) {
                                 <?php endif; ?>
                             <?php endif; ?>
                         </td>
+                        
+                        <td><?= display_etat_badge($d['etat']) ?></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>

@@ -80,7 +80,7 @@
                     move_uploaded_file($_FILES['Registre']['tmp_name'], $docReg);
 
                     $stmt2 = $pdo->prepare("INSERT INTO client_morale (id, ICE, docRegistreCommerce, raisonSocial, secteurActivite) VALUES (?,?,?,?,?)");
-                    $stmt2->execute([$id, $_POST['ice_mor'], $docReg, $_POST['nom_mor'], $_POST['secteurActivite']]);
+                    $stmt2->execute([$id, $_POST['ice_mor'], $docReg, $_POST['nom_mor'] . ' ' . $_POST['prenom_mor'], $_POST['secteurActivite']]);
                 }
 
                 echo "<div class='container mt-5'>

@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 try {
     // Récupérer les autorisations actuelles de l'utilisateur avec le statut de renouvellement
     $sql = "SELECT
-                a.id AS idAutorisation,
+                a.numero_autorisation AS idAutorisation,
                 a.dateAutorisation,
                 a.dateFin,
                 a.fichierPDF,

@@ -146,7 +146,7 @@
                 </div>
                 <button class="btn btn-primary w-100" type="submit">S'inscrire</button>
                 <div class="col-12 mt-2 mb-3">
-                    <a href="connection.php" class="btn btn-outline-secondary w-100">J'ai déjà un compte</a>
+                    <a href="connection.php" class="btn btn-outline-secondary w-100">Déja inscrit</a>
                 </div>
             </form>
         </div>
@@ -175,8 +175,9 @@
                     <label for="telephone_mor">Téléphone</label>
                 </div>
                 <div class="form-floating mb-3">
-                    <input type="text" class="form-control" id="ice_mor" name="ice_mor" placeholder="ICE" required>
-                    <label for="ice_mor">ICE</label>
+                    <input type="text" class="form-control" id="ice_mor" name="ice_mor" placeholder="ICE" required
+                        pattern="[0-9]{15}" minlength="15" maxlength="15">
+                    <label for="ice_mor">ICE (15 chiffres)</label>
                 </div>
                 <div class="mb-3">
                     <label for="Registre" class="form-label">Registre Commerce</label>
@@ -210,7 +211,7 @@
                 </div>
                 <button class="btn btn-primary w-100" type="submit">S'inscrire</button>
                 <div class="col-12 mt-3 mb-3">
-                    <a href="connection.php" class="btn btn-outline-secondary w-100">J'ai déjà un compte</a>
+                    <a href="connection.php" class="btn btn-outline-secondary w-100">Déja inscrit</a>
                 </div>
             </form>
         </div>

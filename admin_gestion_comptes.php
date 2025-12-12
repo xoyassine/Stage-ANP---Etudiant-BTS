@@ -78,9 +78,6 @@ $users = $stmt->fetchAll();
                     <a class="nav-link active" aria-current="page" href="#">GESTION COMPTES</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="admin_gestion_demandes.php">GESTION DEMANDES ET AUTORISATION</a>
-                </li>
-                <li class="nav-item">
                     <a class="nav-link text-danger" href="logout.php">DECONNEXION</a>
                 </li>
             </ul>

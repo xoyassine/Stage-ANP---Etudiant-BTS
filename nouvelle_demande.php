@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmtUpdate->execute([$newDemandeId, $newDemandeId]);
 
 
-                $successMessage = "Votre demande a été déposée avec succès (N° " . $pdo->lastInsertId() . ") et est en attente de traitement.";
+                $successMessage = "Votre demande a été déposée avec succès (N° " . $newDemandeId . ") et est en attente de traitement.";
 
             } catch (PDOException $e) {
                 // Si l'insertion échoue, supprimer le fichier uploadé pour éviter les orphelins

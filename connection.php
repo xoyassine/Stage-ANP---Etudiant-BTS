@@ -37,6 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Redirection selon rôle
             if ($user['role'] === 'admin') {
                 header("Location: admin_gestion_comptes.php");
+            } elseif ($user['role'] === 'ANP') {
+                header("Location: ANP_gestion_demandes.php");
             } else {
                 header("Location: demandesDashboard.php");
             }
@@ -89,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <div class="col-12 mt-3">
             <a href="inscription.php" class="btn btn-outline-secondary w-100">
-                Je n’ai pas de compte
+                Client Prospect
             </a>
         </div>
 
